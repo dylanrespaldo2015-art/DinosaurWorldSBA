@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Dinosaur World — SBA fan prototype</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#142b25;font-family:system-ui,sans-serif;color:#fff;touch-action:none}
+canvas{display:block;width:100vw;height:100vh}
+#hud{position:fixed;inset:0;pointer-events:none;padding:14px;display:flex;justify-content:space-between;align-items:flex-start;text-shadow:0 2px 4px #123}
+.panel{background:#10251dcc;border:1px solid #ffffff40;border-radius:14px;padding:10px 13px;backdrop-filter:blur(5px);font-weight:700}
+#hint{position:fixed;left:50%;top:14px;transform:translateX(-50%);font-size:12px;white-space:nowrap}
+#controls{position:fixed;bottom:18px;left:18px;display:grid;grid-template-columns:54px 54px 54px;grid-template-rows:54px 54px;gap:5px}
+.ctrl{pointer-events:auto;border:1px solid #ffffff70;border-radius:14px;background:#173b31cc;color:white;font-size:22px;font-weight:900;touch-action:none}
+#up{grid-column:2}#left{grid-column:1;grid-row:2}#down{grid-column:2;grid-row:2}#right{grid-column:3;grid-row:2}
+#action{position:fixed;right:22px;bottom:32px;width:76px;height:76px;border-radius:50%;pointer-events:auto;background:#e9a83b;border:3px solid #fff;color:#3b2810;font-weight:900}
+#toast{position:fixed;left:50%;bottom:125px;transform:translateX(-50%);background:#10251ddd;padding:9px 14px;border-radius:12px;opacity:0;transition:opacity .2s;pointer-events:none}
+</style></head><body>
+<canvas id="game"></canvas>
+<div id="hud"><div class="panel">🦖 DINOSAUR WORLD<br><small id="count">Huellas: 0 / 5</small></div><div class="panel">🌴 Isla Perdida</div></div>
+<div id="hint" class="panel">Explora la isla y encuentra las huellas</div>
+<div id="controls"><button class="ctrl" id="up">▲</button><button class="ctrl" id="left">◀</button><button class="ctrl" id="down">▼</button><button class="ctrl" id="right">▶</button></div>
+<button id="action">¡SALTA!</button><div id="toast"></div>
+<script>
+(()=>{const c=document.getElementById('game'),ctx=c.getContext('2d');let W,H,dpr,cam={x:0,y:0};function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
+const keys={},held={};['up','down','left','right'].forEach(k=>{let b=document.getElementById(k);b.addEventListener('pointerdown',e=>{e.preventDefault();held[k]=1});['pointerup','pointercancel','pointerleave'].forEach(t=>b.addEventListener(t,()=>held[k]=0))});
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
+const world={w:1800,h:1300}, player={x:900,y:650,z:0,vz:0,face:0};const tracks=Array.from({length:5},(_,i)=>({x:360+(i*317)%1080,y:270+(i*191)%760,got:false}));
+const dinos=[{x:590,y:470,phase:0,color:'#4c9c52',scale:1.1},{x:1250,y:810,phase:2,color:'#b97839',scale:.85},{x:980,y:330,phase:4,color:'#4c9c52',scale:.7}];
+function toast(s){let t=document.getElementById('toast');t.textContent=s;t.style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.opacity=0,1400)}
+function ellipse(x,y,rx,ry,col){ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill()}
+function drawDino(x,y,s,col,phase){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ellipse(0,5,25,11,'#0003');ctx.strokeStyle=col;ctx.lineWidth=11;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-15,-4);ctx.quadraticCurveTo(-36,-12,-43,-28);ctx.stroke();ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(0,-12,24,15,0,0,7);ctx.fill();ctx.beginPath();ctx.arc(19,-27,12,0,7);ctx.fill();ctx.fillStyle='#f4d66d';ctx.beginPath();ctx.arc(23,-30,3,0,7);ctx.fill();ctx.strokeStyle='#29452c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-10,-1);ctx.lineTo(-12,10+Math.sin(phase)*2);ctx.moveTo(10,-1);ctx.lineTo(12,10-Math.sin(phase)*2);ctx.stroke();ctx.restore()}
+function drawBear(x,y){ctx.save();ctx.translate(x,y-player.z);ellipse(0,14,16,7,'#0004');ctx.fillStyle='#8b623d';ctx.beginPath();ctx.ellipse(0,0,15,18,0,0,7);ctx.fill();ctx.beginPath();ctx.arc(0,-17,13,0,7);ctx.fill();ctx.beginPath();ctx.arc(-9,-27,6,0,7);ctx.arc(9,-27,6,0,7);ctx.fill();ctx.fillStyle='#f2d4aa';ctx.beginPath();ctx.ellipse(0,-14,7,5,0,0,7);ctx.fill();ctx.fillStyle='#21170f';ctx.beginPath();ctx.arc(0,-17,2.3,0,7);ctx.fill();ctx.restore()}
+function draw(){ctx.clearRect(0,0,W,H);let scale=Math.min(W/900,H/650);ctx.save();ctx.translate(W/2-player.x*scale,H/2-player.y*scale);ctx.scale(scale,scale);
+ctx.fillStyle='#216b52';ctx.fillRect(0,0,world.w,world.h); // island
+ctx.fillStyle='#d8c184';ctx.beginPath();ctx.ellipse(900,650,850,600,0,0,7);ctx.fill();
+ctx.fillStyle='#4c9b61';ctx.beginPath();ctx.ellipse(900,650,790,540,0,0,7);ctx.fill();
+// paths and water pools
+ctx.strokeStyle='#cbb27b';ctx.lineWidth=90;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(250,950);ctx.quadraticCurveTo(720,600,900,650);ctx.quadraticCurveTo(1160,700,1510,300);ctx.stroke();
+for(let i=0;i<18;i++){let x=160+(i*137)%1480,y=140+(i*223)%1020;ctx.fillStyle='#236447';ctx.beginPath();ctx.arc(x,y,24+(i%3)*7,0,7);ctx.fill();ctx.fillStyle='#368453';ctx.beginPath();ctx.arc(x-8,y-8,17,0,7);ctx.fill();ctx.fillStyle='#765234';ctx.fillRect(x-4,y,8,25)}
+// pond
+ellipse(430,390,95,55,'#5eb5bc');ellipse(430,390,72,39,'#82d0c9');
+tracks.forEach(t=>{if(!t.got){ctx.save();ctx.translate(t.x,t.y);ctx.fillStyle='#f7e7a0';ctx.font='30px serif';ctx.fillText('🐾',-12,10);ctx.restore()}});
+dinos.forEach(d=>drawDino(d.x,d.y,d.scale,d.color,d.phase));drawBear(player.x,player.y);ctx.restore()}
+let last=0;function loop(ts){let dt=Math.min((ts-last)/16.67,2);last=ts;let dx=0,dy=0;if(keys.arrowup||keys.w||held.up)dy--;if(keys.arrowdown||keys.s||held.down)dy++;if(keys.arrowleft||keys.a||held.left)dx--;if(keys.arrowright||keys.d||held.right)dx++;let len=Math.hypot(dx,dy)||1;player.x=Math.max(90,Math.min(1710,player.x+dx/len*3.2*dt));player.y=Math.max(90,Math.min(1210,player.y+dy/len*3.2*dt));if(dx||dy)player.face=Math.atan2(dy,dx);player.z+=player.vz*dt;player.vz-=.55*dt;if(player.z<0){player.z=0;player.vz=0}
+dinos.forEach(d=>{d.phase+=.025*dt;d.x+=Math.sin(d.phase)*.35*dt;d.y+=Math.cos(d.phase*.7)*.25*dt});
+tracks.forEach(t=>{if(!t.got&&Math.hypot(t.x-player.x,t.y-player.y)<38){t.got=true;let n=tracks.filter(a=>a.got).length;document.getElementById('count').textContent='Huellas: '+n+' / 5';toast(n===5?'¡Encontraste todas las huellas!':'¡Huella encontrada!')}});draw();requestAnimationFrame(loop)}document.getElementById('action').addEventListener('pointerdown',e=>{e.preventDefault();if(player.z===0)player.vz=9});requestAnimationFrame(loop);
+})();
+</script></body></html>
